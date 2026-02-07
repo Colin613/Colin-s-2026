@@ -1,0 +1,40 @@
+# Fish Speech API - HuggingFace Spaces Dockerfile
+# 延边朝鲜语语音克隆系统
+
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# 安装系统依赖
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    libsndfile1 \
+    git \
+    wget \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# 设置环境变量
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV DEBIAN_FRONTEND=noninteractive
+
+# 复制项目文件
+COPY . /app
+
+# 安装 Python 依赖
+RUN pip install --no-cache-dir --upgrade pip
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 创建必要的目录
+RUN mkdir -p /app/checkpoints /app/voices /app/training_output
+
+# 暴露端口（HuggingFace Spaces 使用 7860）
+EXPOSE 7860
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:7860/v1/health || exit 1
+
+# 启动命令
+CMD ["python", "tools/api_server.py", "--host", "0.0.0.0", "--port", "7860", "--workers", "1"]

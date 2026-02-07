@@ -100,6 +100,16 @@ class ServeTTSRequest(BaseModel):
     repetition_penalty: Annotated[float, Field(ge=0.9, le=2.0, strict=True)] = 1.1
     temperature: Annotated[float, Field(ge=0.1, le=1.0, strict=True)] = 0.8
 
+    # Audio post-processing parameters
+    # Speed factor: 0.5 = half speed, 1.0 = normal, 2.0 = double speed
+    speed_factor: Annotated[float, Field(ge=0.5, le=2.0, strict=True)] = 1.0
+    # Pitch factor: 0.8 = lower pitch, 1.0 = normal, 1.2 = higher pitch
+    pitch_factor: Annotated[float, Field(ge=0.8, le=1.2, strict=True)] = 1.0
+    # Emotion intensity: 0.5 = subdued, 1.0 = normal, 1.5 = exaggerated
+    emotion_intensity: Annotated[float, Field(ge=0.5, le=1.5, strict=True)] = 1.0
+    # Volume gain: 0.5 = half volume, 1.0 = normal, 2.0 = double volume
+    volume_gain: Annotated[float, Field(ge=0.5, le=2.0, strict=True)] = 1.0
+
     class Config:
         # Allow arbitrary types for pytorch related types
         arbitrary_types_allowed = True
@@ -134,3 +144,164 @@ class UpdateReferenceResponse(BaseModel):
     message: str
     old_reference_id: str
     new_reference_id: str
+
+
+# ==============================================================================
+# Voice Library Schemas
+# ==============================================================================
+
+class VoiceInfo(BaseModel):
+    id: str
+    name: str
+    description: str = ""
+    language: str = "ko"  # Default to Korean
+    created_at: str
+    sample_rate: int = 24000
+    duration: float = 0.0
+    is_trained: bool = False
+    audio_files: list = []  # List of audio file names
+    reference_text: str = ""  # Reference text for voice cloning
+
+
+class CreateVoiceRequest(BaseModel):
+    id: str = Field(..., min_length=1, max_length=255, pattern=r"^[a-zA-Z0-9\-_ ]+$")
+    name: str = Field(..., min_length=1, max_length=255)
+    description: str = ""
+    language: str = "ko"
+
+
+class CreateVoiceResponse(BaseModel):
+    success: bool
+    message: str
+    voice_id: str
+
+
+class UpdateVoiceRequest(BaseModel):
+    id: str = Field(..., min_length=1)
+    name: str | None = None
+    description: str | None = None
+    language: str | None = None
+
+
+class UpdateVoiceResponse(BaseModel):
+    success: bool
+    message: str
+    voice_id: str
+
+
+class ListVoicesResponse(BaseModel):
+    success: bool
+    voices: list[VoiceInfo]
+    message: str = "Success"
+
+
+class DeleteVoiceRequest(BaseModel):
+    id: str = Field(..., min_length=1, description="Voice ID to delete")
+
+
+class DeleteVoiceResponse(BaseModel):
+    success: bool
+    message: str
+    voice_id: str
+
+
+# ==============================================================================
+# Training Task Schemas
+# ==============================================================================
+
+class TrainingTaskInfo(BaseModel):
+    task_id: str
+    voice_id: str
+    voice_name: str | None = None
+    status: str
+    progress: float = 0.0
+    current_step: int = 0
+    total_steps: int = 0
+    created_at: str
+    started_at: str | None = None
+    completed_at: str | None = None
+    error_message: str | None = None
+    checkpoint_path: str | None = None
+    learning_rate: float | None = None
+    batch_size: int | None = None
+
+
+class CreateTrainingRequest(BaseModel):
+    voice_id: str = Field(..., min_length=1)
+    data_path: str = Field(..., min_length=1)
+    max_steps: int = 5000
+    batch_size: int = 16
+    learning_rate: float = 1e-4
+
+
+class CreateTrainingResponse(BaseModel):
+    success: bool
+    message: str
+    task_id: str
+
+
+class GetTrainingStatusResponse(BaseModel):
+    success: bool
+    task: TrainingTaskInfo | None = None
+    message: str = "Success"
+
+
+class CancelTrainingResponse(BaseModel):
+    success: bool
+    message: str
+    task_id: str
+
+
+class ListTrainingTasksResponse(BaseModel):
+    success: bool
+    tasks: list[TrainingTaskInfo]
+    message: str = "Success"
+
+
+# ==============================================================================
+# Batch Dubbing Schemas
+# ==============================================================================
+
+class BatchJobInfo(BaseModel):
+    job_id: str
+    name: str
+    status: str
+    progress: float = 0.0
+    total_items: int = 0
+    completed_items: int = 0
+    created_at: str
+    started_at: str | None = None
+    completed_at: str | None = None
+    error_message: str | None = None
+    output_path: str | None = None
+
+
+class CreateBatchJobRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    subtitle_file: str = Field(..., min_length=1)  # SRT file path
+    voice_mappings: dict[str, str] = Field(default_factory=dict)  # character -> voice_id
+    output_format: str = "wav"
+
+
+class CreateBatchJobResponse(BaseModel):
+    success: bool
+    message: str
+    job_id: str
+
+
+class GetBatchJobStatusResponse(BaseModel):
+    success: bool
+    job: BatchJobInfo | None = None
+    message: str = "Success"
+
+
+class ListBatchJobsResponse(BaseModel):
+    success: bool
+    jobs: list[BatchJobInfo]
+    message: str = "Success"
+
+
+class CancelBatchJobResponse(BaseModel):
+    success: bool
+    message: str
+    job_id: str

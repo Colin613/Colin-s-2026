@@ -48,8 +48,19 @@ logger.add(sys.stderr, format=logger_format)
 def get_model(
     config_name: str = "modded_dac_vq",
     checkpoint_path: str = "checkpoints/openaudio-s1-mini/codec.pth",
-    device: str | torch.device = "cuda",
+    device: str | torch.device = None,
 ):
+    # Auto-detect device if not specified
+    if device is None:
+        if torch.cuda.is_available():
+            device = "cuda"
+        elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+            device = "mps"
+        else:
+            device = "cpu"
+
+    logger.info(f"Using device: {device}")
+
     with initialize(version_base="1.3", config_path="../../fish_speech/configs"):
         cfg = compose(config_name=config_name)
 
@@ -72,12 +83,12 @@ def get_model(
     model.eval()
     model.to(device)
 
-    logger.info(f"Loaded model")
-    return model
+    logger.info(f"Loaded model on {device}")
+    return model, device
 
 
 @torch.inference_mode()
-def process_batch(files: list[Path], model) -> float:
+def process_batch(files: list[Path], model, device: str | torch.device) -> float:
     wavs = []
     audio_lengths = []
     new_files = []
@@ -95,7 +106,9 @@ def process_batch(files: list[Path], model) -> float:
         if wav.shape[0] > 1:
             wav = wav.mean(dim=0, keepdim=True)
 
-        wav = torchaudio.functional.resample(wav.cuda(), sr, model.sample_rate)[0]
+        # Move to device and resample
+        wav_device = wav.to(device)
+        wav = torchaudio.functional.resample(wav_device, sr, model.sample_rate)[0]
         total_time += len(wav) / model.sample_rate
         max_length = max(max_length, len(wav))
 
@@ -201,11 +214,11 @@ def main(
     total_time = 0
     begin_time = time.time()
     processed_files = 0
-    model = get_model(config_name, checkpoint_path)
+    model, device = get_model(config_name, checkpoint_path)
 
     for n_batch, idx in enumerate(range(0, len(files), batch_size)):
         batch = files[idx : idx + batch_size]
-        batch_time = process_batch(batch, model)
+        batch_time = process_batch(batch, model, device)
 
         total_time += batch_time
         processed_files += len(batch)
