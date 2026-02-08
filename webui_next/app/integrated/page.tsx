@@ -385,7 +385,7 @@ export default function IntegratedAppPage() {
   ];
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+    <div className="flex h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
       {/* Sidebar */}
       <aside
         className={`flex flex-col border-r bg-white/80 backdrop-blur-sm transition-all ${
