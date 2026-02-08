@@ -123,7 +123,7 @@ export default function IntegratedAppPage() {
     setUploading(true);
     setUploadProgress(0);
 
-    try:
+    try {
       // Create form data
       const formData = new FormData();
       formData.append("audio", audioFile);
@@ -203,7 +203,7 @@ export default function IntegratedAppPage() {
     setSelectedVoiceForTest(voice);
     setTestAudioUrl(null);
 
-    try:
+    try {
       // Use custom test text if set, otherwise use Korean default
       const testText = voiceTestText.trim() || "안녕하세요? 이것은 테스트입니다.";
 
@@ -314,7 +314,7 @@ export default function IntegratedAppPage() {
 
   // Load data
   const loadData = async () => {
-    try:
+    try {
       const headers = { "Accept": "application/json" };
 
       const [voicesRes, tasksRes, jobsRes] = await Promise.all([
